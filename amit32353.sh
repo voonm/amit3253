@@ -110,7 +110,7 @@ def main():
             
             # 2. Instance Type - PARTIAL LOGIC (5 Marks)
             itype = target_inst['InstanceType']
-            if itype == 't3.large':
+            if itype == 't3.small':
                 award_points("Instance Type (t3.small)", 5, 5)
             elif itype in ['t3.medium', 't3.micro', 't2.micro']:
                 award_points("Instance Type (t3.small)", 5, 2, f"Wrong type used: {itype} (Awarded 2/5)")
@@ -154,7 +154,7 @@ def main():
                 award_points("Website Shows Student Name", 5, 0, "No Public IP")
         else:
             award_points("EC2 Instance Launched & Running", 5, 0, "No running instances found")
-            award_points("Instance Type (t3.large)", 5, 0)
+            award_points("Instance Type (t3.small)", 5, 0)
             award_points("Security Group: Ports 22 & 80", 5, 0)
             award_points("Website Accessible (HTTP 200)", 5, 0)
             award_points("Website Shows Student Name", 5, 0)
