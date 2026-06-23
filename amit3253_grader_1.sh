@@ -275,25 +275,11 @@ def main():
             target_db = next((db for db in db_instances if db['DBInstanceIdentifier'].lower().startswith("rds-") and student_name_nospace in db['DBInstanceIdentifier'].lower()), None)
         if not target_db:
             target_db = next((db for db in db_instances if db['DBInstanceIdentifier'].lower().startswith("rds-")), None)
-        if not target_db:
-            target_db = db_instances[0] if db_instances else None
 
         if target_db:
             db_id = target_db['DBInstanceIdentifier']
-            db_id_lower = db_id.lower()
-            if db_id_lower == expected_identifier:
-                id_points = 5
-                id_note = db_id
-            elif db_id_lower.startswith("rds-") and student_name_nospace in db_id_lower:
-                id_points = 4
-                id_note = f"Expected {expected_identifier}, found {db_id}"
-            elif db_id_lower.startswith("rds-"):
-                id_points = 3
-                id_note = f"Expected {expected_identifier}, found {db_id}"
-            else:
-                id_points = 2
-                id_note = f"RDS exists but identifier should be {expected_identifier}; found {db_id}"
-            award_points("RDS Instance Identifier (rds-<yourname>)", 5, id_points, id_note)
+            id_points = 5 if db_id.lower() == expected_identifier else 3 if db_id.lower().startswith("rds-") else 0
+            award_points("RDS Instance Identifier (rds-<yourname>)", 5, id_points, db_id)
 
             engine_points = 0
             engine_notes = []
