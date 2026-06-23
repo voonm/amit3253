@@ -83,7 +83,7 @@ def main():
     ec2 = boto3.client('ec2')
     asg_client = boto3.client('autoscaling')
     elbv2 = boto3.client('elbv2')
-    s3 = boto3.client('s3')
+    rds = boto3.client('rds')
 
     # =========================================================
     # TASK 1: EC2 WEB SERVER DEPLOYMENT (25 MARKS)
@@ -264,44 +264,93 @@ def main():
         print(f"Error Task 3: {e}")
 
     # =========================================================
-    # TASK 4: S3 (25 MARKS)
+    # TASK 4: RDS DATABASE INSTANCE (25 MARKS)
     # =========================================================
-    print_header("Task 4: S3 Static Website (25%)")
+    print_header("Task 4: RDS Database Instance (25%)")
     try:
-        buckets = s3.list_buckets()['Buckets']
-        target_bucket = next((b for b in buckets if "s3-" in b['Name']), None)
-        if target_bucket:
-            bname = target_bucket['Name']
-            award_points("Bucket Created (s3-*)", 5, 5, bname)
-            
-            try:
-                s3.get_bucket_website(Bucket=bname)
-                award_points("Static Hosting Enabled", 5, 5)
-            except:
-                award_points("Static Hosting Enabled", 5, 0)
-                
-            try:
-                s3.head_object(Bucket=bname, Key='index.html')
-                award_points("index.html Uploaded", 5, 5)
-            except:
-                award_points("index.html Uploaded", 5, 0)
-                
-            try:
-                pol = s3.get_bucket_policy(Bucket=bname)
-                award_points("Bucket Policy Configured", 5, 5 if "Allow" in pol['Policy'] else 0)
-            except:
-                award_points("Bucket Policy Configured", 5, 0)
+        db_instances = rds.describe_db_instances()['DBInstances']
+        expected_identifier = f"rds-{student_name_nospace}"
+        target_db = next((db for db in db_instances if db['DBInstanceIdentifier'].lower() == expected_identifier), None)
+        if not target_db:
+            target_db = next((db for db in db_instances if db['DBInstanceIdentifier'].lower().startswith("rds-") and student_name_nospace in db['DBInstanceIdentifier'].lower()), None)
+        if not target_db:
+            target_db = next((db for db in db_instances if db['DBInstanceIdentifier'].lower().startswith("rds-")), None)
 
-            s3_url = f"http://{bname}.s3-website-{region}.amazonaws.com"
-            print(f"    Testing S3: {s3_url}")
-            is_loaded, is_name_found, msg = check_website_detailed(s3_url, student_name_input)
-            award_points("Website Verified in Browser", 5, 5 if is_name_found else 0, msg)
+        if target_db:
+            db_id = target_db['DBInstanceIdentifier']
+            id_points = 5 if db_id.lower() == expected_identifier else 3 if db_id.lower().startswith("rds-") else 0
+            award_points("RDS Instance Identifier (rds-<yourname>)", 5, id_points, db_id)
+
+            engine_points = 0
+            engine_notes = []
+            if target_db.get('Engine', '').lower() == 'mysql':
+                engine_points += 2
+            else:
+                engine_notes.append(f"Engine: {target_db.get('Engine', 'Unknown')}")
+            if target_db.get('DBInstanceClass') == 'db.t3.micro':
+                engine_points += 3
+            else:
+                engine_notes.append(f"Class: {target_db.get('DBInstanceClass', 'Unknown')}")
+            award_points("Engine MySQL and Class db.t3.micro", 5, engine_points, "; ".join(engine_notes))
+
+            config_points = 0
+            config_notes = []
+            if target_db.get('AllocatedStorage') == 20:
+                config_points += 2
+            else:
+                config_notes.append(f"Storage: {target_db.get('AllocatedStorage', 'Unknown')} GB")
+            if target_db.get('StorageType') == 'gp2':
+                config_points += 1
+            else:
+                config_notes.append(f"Storage type: {target_db.get('StorageType', 'Unknown')}")
+            if target_db.get('DBName') == 'studentdb':
+                config_points += 1
+            else:
+                config_notes.append(f"DB name: {target_db.get('DBName', 'Not shown/Unknown')}")
+            if target_db.get('MasterUsername') == 'admin':
+                config_points += 1
+            else:
+                config_notes.append(f"Master username: {target_db.get('MasterUsername', 'Unknown')}")
+            award_points("Storage 20GB gp2, DB studentdb, Username admin", 5, config_points, "; ".join(config_notes))
+
+            access_points = 0
+            access_notes = []
+            if target_db.get('DBInstanceStatus') == 'available':
+                access_points += 2
+            else:
+                access_notes.append(f"Status: {target_db.get('DBInstanceStatus', 'Unknown')}")
+            if target_db.get('PubliclyAccessible') is False:
+                access_points += 2
+            else:
+                access_notes.append("Public access is enabled")
+            if target_db.get('MonitoringInterval', 0) == 0:
+                access_points += 1
+            else:
+                access_notes.append(f"Enhanced monitoring interval: {target_db.get('MonitoringInterval')} seconds")
+            award_points("Available, Private, Enhanced Monitoring Disabled", 5, access_points, "; ".join(access_notes))
+
+            sg_ids = [sg['VpcSecurityGroupId'] for sg in target_db.get('VpcSecurityGroups', [])]
+            mysql_rule_found = False
+            if sg_ids:
+                security_groups = ec2.describe_security_groups(GroupIds=sg_ids)['SecurityGroups']
+                for sg in security_groups:
+                    for perm in sg.get('IpPermissions', []):
+                        from_port = perm.get('FromPort')
+                        to_port = perm.get('ToPort')
+                        protocol = perm.get('IpProtocol')
+                        cidrs = [r.get('CidrIp') for r in perm.get('IpRanges', [])]
+                        if protocol == 'tcp' and from_port is not None and to_port is not None and from_port <= 3306 <= to_port and '10.0.0.0/16' in cidrs:
+                            mysql_rule_found = True
+                            break
+                    if mysql_rule_found:
+                        break
+            award_points("Security Group Allows MySQL/Aurora 3306 from 10.0.0.0/16", 5, 5 if mysql_rule_found else 0, ", ".join(sg_ids) if sg_ids else "No security groups attached")
         else:
-            award_points("Bucket Created (s3-*)", 5, 0)
-            award_points("Static Hosting Enabled", 5, 0)
-            award_points("index.html Uploaded", 5, 0)
-            award_points("Bucket Policy Configured", 5, 0)
-            award_points("Website Verified in Browser", 5, 0)
+            award_points("RDS Instance Identifier (rds-<yourname>)", 5, 0)
+            award_points("Engine MySQL and Class db.t3.micro", 5, 0)
+            award_points("Storage 20GB gp2, DB studentdb, Username admin", 5, 0)
+            award_points("Available, Private, Enhanced Monitoring Disabled", 5, 0)
+            award_points("Security Group Allows MySQL/Aurora 3306 from 10.0.0.0/16", 5, 0)
     except Exception as e:
         print(f"Error Task 4: {e}")
 
