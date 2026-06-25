@@ -309,7 +309,7 @@ def main():
 
             config_points = 0
             config_notes = []
-            if target_db.get('AllocatedStorage') == 20:
+            if target_db.get('AllocatedStorage') == 10:
                 config_points += 2
             else:
                 config_notes.append(f"Storage: {target_db.get('AllocatedStorage', 'Unknown')} GB")
