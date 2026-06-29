@@ -325,7 +325,7 @@ def main():
                 config_points += 1
             else:
                 config_notes.append(f"Master username: {target_db.get('MasterUsername', 'Unknown')}")
-            award_points("Storage 20GB gp2, DB studentdb, Username admin", 5, config_points, "; ".join(config_notes))
+            award_points("Storage 10GB gp2, DB studentdb, Username admin", 5, config_points, "; ".join(config_notes))
 
             access_points = 0
             access_notes = []
@@ -362,7 +362,7 @@ def main():
         else:
             award_points("RDS Instance Identifier (rds-<yourname>)", 5, 0)
             award_points("Engine MySQL and Class db.t3.micro", 5, 0)
-            award_points("Storage 20GB gp2, DB studentdb, Username admin", 5, 0)
+            award_points("Storage 10GB gp2, DB studentdb, Username admin", 5, 0)
             award_points("Available, Private, Enhanced Monitoring Disabled", 5, 0)
             award_points("Security Group Allows MySQL/Aurora 3306 from 10.0.0.0/16", 5, 0)
     except Exception as e:
